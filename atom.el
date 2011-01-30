@@ -20,23 +20,52 @@
 
 ;;; Commentary:
 
-;; This is a library for creating an Atom file from a Lisp program.
+;; This is a library for creating an Atom feed from a Lisp program.
+;; The normal usage is to create a feed with `atom-create', giving it
+;; a title and a Web address. Once the feed has been created, entries
+;; may be added to the feed, by specifying (at the minimum) a title, a
+;; permanent link and the content of the entry. Text-only, HTML and
+;; XHTML entries are supported.
+
+;; A feed is really a Lisp structure as used by the `xml.el' package,
+;; without the parent `feed' element.
 
 ;; A typical usage would look like this:
 
 ;; (let ((my-atom-feed (atom-create "My feed" "http://example.org")))
-;;   (atom-add-text-entry my-atom-feed
-;; 		       "Hello world"
-;; 		       "http://example.org/hello"
-;;   		       "Hello the world!")
-;;   (atom-add-xhtml-entry my-atom-feed
-;; 			"An XHTML example"
-;; 			"http://example.org/html-example"
-;; 			"<p>One can also use <acronym>XHTML</acronym> in the
-;;                          entries.</p>")
+;;   ; A simple, text-only entry
+;;   (atom-add-text-entry
+;;    my-atom-feed
+;;    "Hello world"
+;;    "http://example.org/hello"
+;;    "Hello the world!")
+;;
+;;   ; A text-only entry, with all the optional pieces of data
+;;   (atom-add-text-entry
+;;    my-atom-feed
+;;    "Bonjour"
+;;    "http://example.org/bonjour"
+;;    "Bonjour à tout le monde !"
+;;    ;; optional: the last modification time
+;;    (date-to-time "2011-01-30 23:40:12")
+;;    ;; optional: an identifier for this entry; a common way to generate it is
+;;    ;; to use the domain name and the creation date of the entry.
+;;    (atom-generate-id "http://example.org"
+;; 		     (date-to-time "2011-01-30 10:01:05"))
+;;    ;; optional: a summary for this entry
+;;    "Bonjour, monde.")
+;;
+;;   (atom-add-xhtml-entry
+;;    my-atom-feed
+;;    "An XHTML example"
+;;    "http://example.org/html-example"
+;;    "<p>One can also use <acronym>XHTML</acronym> in the entries.</p>")
 ;;   (atom-print my-atom-feed))
 
+
 ;;; Code:
+
+(require 'xml)
 
 (defun atom-create (title link &optional author updated id)
   "Create a new atom structure.
@@ -55,7 +84,6 @@ UPDATED is the date the feed was last updated. If not given,
 
 ID is a unique identifier for this feed. If not given, it
 defaults to LINK."
-  
   `((title nil ,title)
     (link ((href . ,link)))
     ,(atom-massage-author author)
@@ -79,7 +107,7 @@ defaults to LINK."
       (nconc entry (list elem)))))
 
 (defun atom-add-entry (atom title link content
-			    &optional summary updated id)
+			    &optional updated id summary)
   "Add an entry to the atom flux ATOM. Return the newly added
 entry.
 
@@ -96,9 +124,10 @@ If SUMMARY is not given, the entry will not contain any summary.
 UPDATED defaults to `(current-time)' if omitted, which is
 probably not a very good default.
 
-ID defaults to LINK, which is not optimal; TODO give a way to
-easily generate IDs. For a given entry, it must not change
-between successive generations of the atom feed."
+ID defaults to LINK, which is not optimal; see `atom-generate-id'
+for a way to create good identifiers. For a given entry, it must
+not change between successive generations of the atom feed, even
+when the content of the entry ."
   (let ((entry (list (list 'title nil title))))
     (atom-modify-entry entry 'link  (list (list (cons 'href link))))
     (atom-modify-entry entry 'id (or id link))
@@ -113,7 +142,7 @@ between successive generations of the atom feed."
 `atom-add-entry' for details.")
 
 (defun atom-add-html-entry (atom title link content
-				  &optional summary updated id)
+				  &optional updated id summary)
   "Add an entry to ATOM, with some HTML content. CONTENT should
 be a string enconding a valid HTML fragment. See `atom-add-entry'
 for additional details."
@@ -124,7 +153,7 @@ for additional details."
    updated id))
 
 (defun atom-add-xhtml-entry (atom title link content
-				  &optional summary updated id)
+				  &optional updated id summary)
   "Add an entry to ATOM, with some XHTML content. CONTENT may be
 given either as a string, or as an XML tree, of a valid XHTML
 fragment. See `atom-add-entry' for additional details."
@@ -188,6 +217,17 @@ Atom feed."
    ((= 2 (length author)) `(author nil (name nil ,(car author))
 				   (email nil ,(cadr author))))
    (t `(author nil ,author))))
+
+(require 'url-parse)
+
+(defun atom-generate-id (link creation-date)
+  "Generate a string suitable for use as an atom:id element. This
+implements Mark Pilgrom's tag: URI method, using the
+CREATION-DATE of the entry, and the domain part of LINK"
+    (format "tag:%s,%s:/%s"
+	    (url-host (url-generic-parse-url link))
+	    (format-time-string "%Y-%m-%d" creation-date)
+	    (format-time-string "%Y%m%d%H%M%S" creation-date)))
 
 (provide 'atom)
 ;;; atom.el ends here
