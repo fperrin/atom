@@ -22,9 +22,23 @@
 
 ;; This is a library for creating an Atom file from a Lisp program.
 
+;; A typical usage would look like this:
+
+;; (let ((my-atom-feed (atom-create "My feed" "http://example.org")))
+;;   (atom-add-text-entry my-atom-feed
+;; 		       "Hello world"
+;; 		       "http://example.org/hello"
+;;   		       "Hello the world!")
+;;   (atom-add-xhtml-entry my-atom-feed
+;; 			"An XHTML example"
+;; 			"http://example.org/html-example"
+;; 			"<p>One can also use <acronym>XHTML</acronym> in the
+;;                          entries.</p>")
+;;   (atom-print my-atom-feed))
+
 ;;; Code:
 
-(defun atom-create (title author link &optional updated id)
+(defun atom-create (title link &optional author updated id)
   "Create a new atom structure.
 
 TITLE is the title for the feed, a short, text-only, human
@@ -41,6 +55,7 @@ UPDATED is the date the feed was last updated. If not given,
 
 ID is a unique identifier for this feed. If not given, it
 defaults to LINK."
+  
   `((title nil ,title)
     (link ((href . ,link)))
     ,(atom-massage-author author)
