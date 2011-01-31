@@ -86,7 +86,7 @@ UPDATED is the date the feed was last updated. If not given,
 ID is a unique identifier for this feed. If not given, it
 defaults to LINK."
   (let ((atom-feed (list (list 'title nil title))))
-    (atom-modify-entry atom-feed 'link (list (list (cons 'href link))))
+    (atom-modify-entry atom-feed 'link `(((href . ,link))))
     (atom-modify-entry atom-feed 'author (atom-massage-author author))
     (if self (atom-modify-entry atom-feed 'link
 				`(((href . ,self) (rel . "self")
@@ -97,7 +97,7 @@ defaults to LINK."
 
 (defun atom-push-entry (atom entry)
   "Add the entry ENTRY to the feed ATOM."
-  (nconc atom (list `(entry nil . ,entry))))
+  (nconc atom (list `(entry nil ,@entry))))
 
 (defun atom-modify-entry (entry name val)
   "Set the NAME element of ENTRY to VAL. A true MULTIPLE means
@@ -197,9 +197,9 @@ Atom feed. CONTENT must be a string."
 Atom feed."
   (list '((type . "xhtml"))
 	`(div ((xmlns . "http://www.w3.org/1999/xhtml"))
-	      . ,(or (and (stringp content)
-			  (atom-string-to-xml content))
-		     content))))
+	      ,@(or (and (stringp content)
+			 (atom-string-to-xml content))
+		    content))))
 
 (defun atom-massage-author (author)
   "Return an XML node representing the author. AUTHOR can be:
@@ -209,21 +209,20 @@ Atom feed."
 - a list with two elements, the full name and the email address
   of the author;
 - something else, assumed to be a complete `atomPersonConstruct'."
-  `(nil .
-	,(cond
-	  ((null author) `((name nil ,user-full-name)
-			   (email nil ,user-mail-address)))
-	  ((stringp author) `((name nil ,author)))
-	  ((= 2 (length author)) `((name nil ,(car author))
-				   (email nil ,(cadr author))))
-	  (t `(author nil ,author)))))
+  `(nil ,@(cond
+	   ((null author) `((name nil ,user-full-name)
+			    (email nil ,user-mail-address)))
+	   ((stringp author) `((name nil ,author)))
+	   ((= 2 (length author)) `((name nil ,(car author))
+				    (email nil ,(cadr author))))
+	   (t `(author nil ,author)))))
 
 (require 'url-parse)
 
 (defun atom-generate-id (link creation-date)
   "Generate a string suitable for use as an atom:id element. This
 implements Mark Pilgrom's tag: URI method, using the
-CREATION-DATE of the entry, and the domain part of LINK"
+CREATION-DATE of the entry, and the domain part of LINK."
     (format "tag:%s,%s:/%s"
 	    (url-host (url-generic-parse-url link))
 	    (format-time-string "%Y-%m-%d" creation-date)
