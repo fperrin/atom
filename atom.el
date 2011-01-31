@@ -148,10 +148,8 @@ when the content of the entry ."
 be a string enconding a valid HTML fragment. See `atom-add-entry'
 for additional details."
   (atom-add-entry atom
-   title link
-   (atom-massage-html content)
-   (and summary (atom-massage-html summary))
-   updated id))
+   title link (atom-massage-html content)
+   updated id (and summary (atom-massage-html summary))))
 
 (defun atom-add-xhtml-entry (atom title link content
 				  &optional updated id summary)
@@ -159,10 +157,8 @@ for additional details."
 given either as a string, or as an XML tree, of a valid XHTML
 fragment. See `atom-add-entry' for additional details."
   (atom-add-entry atom
-   title link
-   (atom-massage-xhtml content)
-   (and summary	(atom-massage-xhtml summary))
-   updated id))
+   title link (atom-massage-xhtml content)
+   updated id (and summary (atom-massage-xhtml summary))))
 
 (defun atom-print (atom)
   "Print the Atom feed ATOM in the current buffer."
@@ -189,17 +185,18 @@ Atom feed. CONTENT must be a string."
 (defun atom-string-to-xml (string)
   "Convert STRING into a Lisp structure as used by `xml.el'."
   (with-temp-buffer
+    (insert "<div xmlns=\"http://www.w3.org/1999/xhtml\">")
     (insert string)
+    (insert "</div>")
     (xml-parse-region (point-min) (point-max))))
 
 (defun atom-massage-xhtml (content)
   "Massage CONTENT so it can be used as an XHTML fragment in an
 Atom feed."
-  (list '((type . "xhtml"))
-	`(div ((xmlns . "http://www.w3.org/1999/xhtml"))
-	      ,@(or (and (stringp content)
-			 (atom-string-to-xml content))
-		    content))))
+  `(((type . "xhtml"))
+    ,@(or (and (stringp content)
+	       (atom-string-to-xml content))
+	  content)))
 
 (defun atom-massage-author (author)
   "Return an XML node representing the author. AUTHOR can be:
