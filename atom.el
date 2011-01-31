@@ -62,12 +62,11 @@
 ;;    "<p>One can also use <acronym>XHTML</acronym> in the entries.</p>")
 ;;   (atom-print my-atom-feed))
 
-
 ;;; Code:
 
 (require 'xml)
 
-(defun atom-create (title link &optional author updated id)
+(defun atom-create (title link &optional author self updated id)
   "Create a new atom structure.
 
 TITLE is the title for the feed, a short, text-only, human
@@ -75,6 +74,8 @@ readable string.
 
 AUTHOR is the author of the feed. See `atom-massage-author' for
 the possible ways to specify it.
+
+SELF is the canonical URL to this feed.
 
 LINK is the URL of a page responible for the content of this
 feed.
@@ -84,27 +85,27 @@ UPDATED is the date the feed was last updated. If not given,
 
 ID is a unique identifier for this feed. If not given, it
 defaults to LINK."
-  `((title nil ,title)
-    (link ((href . ,link)))
-    ,(atom-massage-author author)
-    (updated nil ,(atom-format-time updated))
-    (id nil ,(or id link))))
+  (let ((atom-feed (list (list 'title nil title))))
+    (atom-modify-entry atom-feed 'link (list (list (cons 'href link))))
+    (atom-modify-entry atom-feed 'author (atom-massage-author author))
+    (if self (atom-modify-entry atom-feed 'link
+				`(((href . ,self) (rel . "self")
+				   (type . "application/atom+xml")))))
+    (atom-modify-entry atom-feed 'updated (atom-format-time updated))
+    (atom-modify-entry atom-feed 'id (or id link))
+    atom-feed))
 
 (defun atom-push-entry (atom entry)
   "Add the entry ENTRY to the feed ATOM."
   (nconc atom (list `(entry nil . ,entry))))
 
 (defun atom-modify-entry (entry name val)
-  "Set the NAME element of ENTRY to VAL."
-  (let ((elem (assoc name entry)))
-    (if elem
-	(if (stringp val)
-	    (setcar (cddr elem) val)
-	  (setcdr elem val))
-      (setq elem (if (stringp val)
-		     (list name nil val)
-		   (cons name val)))
-      (nconc entry (list elem)))))
+  "Set the NAME element of ENTRY to VAL. A true MULTIPLE means
+to add a new element instead of updating it when it already exists."
+  (let ((elem (if (stringp val)
+		  (list name nil val)
+		(cons name val))))
+    (nconc entry (list elem))))
 
 (defun atom-add-entry (atom title link content
 			    &optional updated id summary)
@@ -208,15 +209,14 @@ Atom feed."
 - a list with two elements, the full name and the email address
   of the author;
 - something else, assumed to be a complete `atomPersonConstruct'."
-  (cond
-   ((null author) `(author nil 
-			   (name nil ,user-full-name)
+  `(nil .
+	,(cond
+	  ((null author) `((name nil ,user-full-name)
 			   (email nil ,user-mail-address)))
-   ((stringp author) `(author nil 
-			      (name nil ,user-full-name)))
-   ((= 2 (length author)) `(author nil (name nil ,(car author))
+	  ((stringp author) `((name nil ,author)))
+	  ((= 2 (length author)) `((name nil ,(car author))
 				   (email nil ,(cadr author))))
-   (t `(author nil ,author))))
+	  (t `(author nil ,author)))))
 
 (require 'url-parse)
 
