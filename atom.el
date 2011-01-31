@@ -167,6 +167,12 @@ fragment. See `atom-add-entry' for additional details."
   (xml-print atom)
   (insert "\n</feed>"))
 
+(defun atom-write-file (atom filename)
+  "Writes the feed ATOM to FILENAME."
+  (with-temp-buffer
+    (atom-print atom)
+    (write-region (point-min) (point-max) filename)))
+
 
 (defun atom-format-time (&optional time)
   "Format a time according to RFC3339."
