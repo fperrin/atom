@@ -1,0 +1,81 @@
+atom.el -- An elisp library for creating Atom feeds
+
+* Presentation
+
+This is a library for creating an Atom feed from a Lisp program. The
+normal usage is to create a feed with a title and a Web address. Once
+the feed has been created, entries may be added to the feed, by
+specifying (at the minimum) a title, a permanent link and the content
+of the entry. Text-only, HTML and XHTML entries are supported.
+
+The code for this library is hosted at http://code.fperrin.net/atom.git.
+
+* Installation
+
+Put the file =atom.el= somewhere in your =load-path=, and add
+=(require 'atom)= at the top of your Lisp program.
+
+* First taste
+
+The feed is created with =atom-create=, giving it a title and a Web
+address at the minimum. Entries may then be added one by one with
+=atom-add-{text,html,xhtml}-entry=.
+
+A typical usage would look like this:
+
+#+BEGIN_SRC elisp
+  (let ((my-atom-feed (atom-create "My feed" "http://example.org")))
+  
+    ;; A simple, text-only entry
+    (atom-add-text-entry
+     my-atom-feed
+     "Hello world"
+     "http://example.org/hello"
+     "Hello the world!")
+  
+    ;; A text-only entry, with all the optional pieces of data
+    (atom-add-text-entry
+     my-atom-feed
+     "Bonjour"
+     "http://example.org/bonjour"
+     "Bonjour à tout le monde !"
+     ;; optional: the last modification time
+     (date-to-time "2011-01-30 23:40:12")
+     ;; optional: an identifier for this entry; a common way to generate it is
+     ;; to use the domain name and the creation date of the entry.
+     (atom-generate-id "http://example.org"
+                       (date-to-time "2011-01-30 10:01:05"))
+     ;; optional: a summary for this entry
+     "Bonjour, monde.")
+  
+    ;; an XHTML entry
+    (atom-add-xhtml-entry
+     my-atom-feed
+     "An XHTML example"
+     "http://example.org/html-example"
+     "<p>One can also use <acronym>XHTML</acronym> in the entries.</p>")
+  
+    ;; Get the resulting Atom feed (see also `atom-write-file')
+    (atom-print my-atom-feed))
+#+END_SRC
+
+* Additionnal notes
+
+The =my-atom-feed= object in the example above is really only an XML
+tree as defined by the =xml.el= package. This means you can manipulate
+it, as long as you are careful not to mess up the XML structure. For
+instance, if you want to add somebody as a contributor to an entry,
+you could say the following:
+
+#+BEGIN_SRC elisp
+  (let ((entry (atom-add-html-entry my-atom-feed
+                                    "Witty title"
+                                    "http://example.org/witty"
+                                    "<p>This is <i>clever</i>, isn't it?")))
+    (atom-modify-entry entry 'contributor
+                       (atom-massage-author '("John Clever" "jc@example.net"))))
+#+END_SRC
+
+As of now, the library doesn't check whether there are two entries
+with the same =id= value (which is illegal), or with the same
+=updated= value (which reportedly confuse some readers).
