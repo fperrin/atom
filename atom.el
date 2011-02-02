@@ -66,25 +66,25 @@
 
 (require 'xml)
 
-(defun atom-create (title link &optional author self updated id)
+(defun atom-create (title link &optional self id author updated)
   "Create a new atom structure.
 
 TITLE is the title for the feed, a short, text-only, human
 readable string.
 
-AUTHOR is the author of the feed. See `atom-massage-author' for
-the possible ways to specify it.
-
-SELF is the canonical URL to this feed.
-
 LINK is the URL of a page responible for the content of this
 feed.
 
-UPDATED is the date the feed was last updated. If not given,
-`(current-time)' is used.
+SELF is the canonical URL to this feed.
 
 ID is a unique identifier for this feed. If not given, it
-defaults to LINK."
+defaults to LINK.
+
+AUTHOR is the author of the feed. See `atom-massage-author' for
+the possible ways to specify it.
+
+UPDATED is the date the feed was last updated. If not given,
+`(current-time)' is used."
   (let ((atom-feed (list (list 'title nil title))))
     (atom-modify-entry atom-feed 'link `(((href . ,link))))
     (atom-modify-entry atom-feed 'author (atom-massage-author author))
