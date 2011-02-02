@@ -66,7 +66,7 @@
 
 (require 'xml)
 
-(defun atom-create (title link &optional self id author updated)
+(defun atom-create (title link &optional subtitle self id author updated)
   "Create a new atom structure.
 
 TITLE is the title for the feed, a short, text-only, human
@@ -74,6 +74,9 @@ readable string.
 
 LINK is the URL of a page responible for the content of this
 feed.
+
+SUBTITLE is a subtitle for the feed; it can be a bit longer than
+TITLE, maybe a paragraph long.
 
 SELF is the canonical URL to this feed.
 
@@ -88,6 +91,7 @@ UPDATED is the date the feed was last updated. If not given,
   (let ((atom-feed (list (list 'title nil title))))
     (atom-modify-entry atom-feed 'link `(((href . ,link))))
     (atom-modify-entry atom-feed 'author (atom-massage-author author))
+    (if subtitle (atom-modify-entry atom-feed 'subtitle subtitle))
     (if self (atom-modify-entry atom-feed 'link
 				`(((href . ,self) (rel . "self")
 				   (type . "application/atom+xml")))))
@@ -100,8 +104,7 @@ UPDATED is the date the feed was last updated. If not given,
   (nconc atom (list `(entry nil ,@entry))))
 
 (defun atom-modify-entry (entry name val)
-  "Set the NAME element of ENTRY to VAL. A true MULTIPLE means
-to add a new element instead of updating it when it already exists."
+  "Set the NAME element of ENTRY to VAL."
   (let ((elem (if (stringp val)
 		  (list name nil val)
 		(cons name val))))
@@ -174,14 +177,101 @@ fragment. See `atom-add-entry' for additional details."
     (write-region (point-min) (point-max) filename)))
 
 
+(defun atom-to-rss (atom)
+  "Translate an Atom feed into an RSS one, returning the translation.
+
+Some information may be lost or approximated."
+  (let ((rss (list (assoc 'title atom))))
+    (atom-to-rss-translator atom rss '((subtitle . description)
+				       (updated . pubDate)
+				       (link . link)))
+    (atom-to-rss-modify-time rss)
+    (atom-to-rss-modify-link rss)
+    (dolist (entry (xml-get-children atom 'entry))
+      (push (atom-to-rss-item entry) rss))
+    (reverse rss)))
+
+(defun atom-to-rss-item (entry)
+  "Translates an Atom entry into an RSS item."
+  (let ((item (list (assoc 'title entry))))
+    (atom-to-rss-translator
+     (xml-node-children entry) item
+     '((id . guid) (content . description) (updated . pubDate) (link . link)))
+    (atom-to-rss-modify-time item)
+    (atom-to-rss-modify-link item)
+    (let ((guid (assoc 'guid item))
+	  (descr (assoc 'description item)))
+      (if guid
+	  (setcar (cdr guid) (list (cons 'isPermaLink "false"))))
+      (if (and descr
+	       (equal (xml-get-attribute descr 'type) "xhtml"))
+	  (setcar (cddr descr) (xml-node-text descr))))
+    `(item nil ,@item)))
+
+(defun atom-to-rss-translator (source target translations)
+  (dolist (translation translations)
+    (let* ((from (car translation))
+	   (to (cdr translation))
+	   (data (copy-tree (cdr (assoc from source)))))
+      (when data
+	(atom-modify-entry target to data)))))
+
+(defun xml-node-text (node)
+  (with-temp-buffer
+    (xml-print (xml-node-children node))
+    (buffer-string)))
+
+(defun atom-to-rss-modify-link (entry)
+  (let* ((link (assoc 'link entry))
+	 (link-addr (xml-get-attribute-or-nil link 'href)))
+    (message "%S" link)
+    (when link
+      (setcar (cdr link) nil)
+      (setcdr (cdr link) (cons link-addr nil)))))
+
+(defun atom-print-as-rss (atom)
+  (let ((rss (atom-to-rss atom)))
+    (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    (insert "<rss version=\"2.0\">\n")
+    (insert "  <channel>\n")
+    (xml-print rss "    ")
+    (insert "\n  </channel>\n")
+    (insert "</rss>")))
+
+(defun atom-to-rss-time (time)
+  "Translates a string from the format used by Atom into the
+format used by RSS."
+  ;; Same remark as in `atom-format-time'
+  (let ((system-time-locale "C"))
+    (format-time-string "%a, %d %b %Y %T %z" (atom-parse-time time))))
+
+(defun atom-to-rss-modify-time (entry)
+  "Modify ENTRY, changing the format of the `pubDate' in it."
+  (let ((pubDate (assoc 'pubDate entry)))
+    (setcar (cddr pubDate)
+	    (atom-to-rss-time (car (xml-node-children pubDate))))))
+
+(defun atom-to-rss-write-file (atom filename)
+  "Saves ATOM as a RSS feed into FILENAME."
+  (with-temp-buffer
+    (atom-print-as-rss atom)
+    (write-region nil nil filename)))
+
+
+(defvar atom-time-format-string "%Y-%m-%dT%T%z"
+  "The format for string representation of dates.")
+
 (defun atom-format-time (&optional time)
   "Format a time according to RFC3339."
   ;; The time zone must be specified in numeric form, but with a colon between
   ;; the hour and minute parts.
   (replace-regexp-in-string
-   "\\(..\\)$"
-   ":\\1"
-   (format-time-string "%Y-%m-%dT%T%z" time)))
+   "\\(..\\)$" ":\\1"
+   (format-time-string atom-time-format-string time)))
+
+(defun atom-parse-time (&optional time)
+  "Parse a time as specified in RFC3339 into Emacs's native format."
+  (date-to-time (replace-regexp-in-string ":\\(..\\)$" "\\1" time)))
 
 (defun atom-massage-html (content)
   "Massage CONTENT so it can be used as an HTML fragment in an
