@@ -78,7 +78,7 @@ feed.
 SELF is the canonical URL to this feed.
 
 ID is a unique identifier for this feed. If not given, it
-defaults to LINK.
+defaults to SELF.
 
 AUTHOR is the author of the feed. See `atom-massage-author' for
 the possible ways to specify it.
@@ -92,7 +92,7 @@ UPDATED is the date the feed was last updated. If not given,
 				`(((href . ,self) (rel . "self")
 				   (type . "application/atom+xml")))))
     (atom-modify-entry atom-feed 'updated (atom-format-time updated))
-    (atom-modify-entry atom-feed 'id (or id link))
+    (atom-modify-entry atom-feed 'id (or id self link))
     atom-feed))
 
 (defun atom-push-entry (atom entry)
