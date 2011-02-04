@@ -65,6 +65,8 @@
 ;;; Code:
 
 (require 'xml)
+(require 'url-parse)
+(require 'cl) ; for setf in url-canonalize
 
 (defun atom-create (title link &optional subtitle self id author updated)
   "Create a new atom structure.
@@ -84,7 +86,8 @@ ID is a unique identifier for this feed. If not given, it
 defaults to SELF.
 
 AUTHOR is the author of the feed. See `atom-massage-author' for
-the possible ways to specify it.
+the possible ways to specify it. In particular, `nil' uses
+`user-full-name' and `user-mail-address'.
 
 UPDATED is the date the feed was last updated. If not given,
 `(current-time)' is used."
@@ -155,13 +158,19 @@ for additional details."
    updated id (and summary (atom-massage-html summary))))
 
 (defun atom-add-xhtml-entry (atom title link content
-				  &optional updated id summary)
+				  &optional updated id summary noconvert)
   "Add an entry to ATOM, with some XHTML content. CONTENT may be
 given either as a string, or as an XML tree, of a valid XHTML
-fragment. See `atom-add-entry' for additional details."
-  (atom-add-entry atom
-   title link (atom-massage-xhtml content)
-   updated id (and summary (atom-massage-xhtml summary))))
+fragment. See `atom-add-entry' for additional details.
+
+If CONVERT, translate all links in CONTENT so that they are no
+longer relative to LINK."
+  (let ((xhtml-content (atom-massage-xhtml content)))
+    (unless noconvert
+      (atom-xhtml-convert-links (cadr xhtml-content) link))
+    (atom-add-entry atom
+		    title link xhtml-content
+		    updated id (and summary (atom-massage-xhtml summary)))))
 
 (defun atom-print (atom)
   "Print the Atom feed ATOM in the current buffer."
@@ -224,7 +233,6 @@ Some information may be lost or approximated."
 (defun atom-to-rss-modify-link (entry)
   (let* ((link (assoc 'link entry))
 	 (link-addr (xml-get-attribute-or-nil link 'href)))
-    (message "%S" link)
     (when link
       (setcar (cdr link) nil)
       (setcdr (cdr link) (cons link-addr nil)))))
@@ -310,7 +318,26 @@ Atom feed."
 				    (email nil ,(cadr author))))
 	   (t `(author nil ,author)))))
 
-(require 'url-parse)
+(defun atom-xhtml-convert-links (node base)
+  "Make all links in NODE (a fragment of an XHTML document)
+absolute, in the context of BASE, an URL."
+  (dolist (attr-name (list 'href 'src))
+    (let ((attr (assoc attr-name (xml-node-attributes node))))
+      (when attr (setcdr attr (url-canonalize (cdr attr) base)))))
+  (dolist (child (xml-node-children node))
+    (when (listp child) (atom-xhtml-convert-links child base))))
+
+(defun url-canonalize (address base)
+  "Make ADRESS an absolute URL, taking it in the BASE context."
+  ;; I feel such a function should exist in `url-parse'. Did I miss it?
+  (let ((url-base (url-generic-parse-url base))
+	(url-address (url-generic-parse-url address)))
+    (if (url-host url-address)
+	address
+      (setf (url-filename url-base)
+	    (expand-file-name address
+			      (file-name-directory (url-filename url-base))))
+      (url-recreate-url url-base))))
 
 (defun atom-generate-id (link creation-date)
   "Generate a string suitable for use as an atom:id element. This
