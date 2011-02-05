@@ -276,15 +276,18 @@ Atom feed. CONTENT must be a string."
     (insert "<div xmlns=\"http://www.w3.org/1999/xhtml\">")
     (insert string)
     (insert "</div>")
-    (xml-parse-region (point-min) (point-max))))
+    ;; `xml-parse-region' doesn't require that the XML parsed be enclosed in a
+    ;; root node, and accordingly, returns a list of elements. We are only
+    ;; interested in the first one, the DIV we just inserted.
+    (car (xml-parse-region (point-min) (point-max)))))
 
 (defun atom-massage-xhtml (content)
   "Massage CONTENT so it can be used as an XHTML fragment in an
 Atom feed."
-  `(((type . "xhtml"))
-    ,@(or (and (stringp content)
-	       (atom-string-to-xml content))
-	  content)))
+  (list '((type . "xhtml"))
+	(or (and (stringp content)
+		 (atom-string-to-xml content))
+	    `(div ((xmlns . "http://www.w3.org/1999/xhtml\">")) ,@content))))
 
 (defun atom-massage-author (author)
   "Return an XML node representing the author. AUTHOR can be:
@@ -337,10 +340,14 @@ CREATION-DATE of the entry, and the domain part of LINK."
       (url-recreate-url url-base))))
 
 (defun xml-node-as-text (node)
-  "Return a string representing NODEn, an XML structure."
+  "Return a string representing NODE, an XML structure."
   (with-temp-buffer
     (xml-print (xml-node-children node))
     (buffer-string)))
+
+(defun xml-node-create (name attrlist childlist)
+  "Create a new XML node."
+  (list name attrlist . childlist))
 
 (provide 'atom)
 ;;; atom.el ends here
