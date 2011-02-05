@@ -8,7 +8,8 @@ the feed has been created, entries may be added to the feed, by
 specifying (at the minimum) a title, a permanent link and the content
 of the entry. Text-only, HTML and XHTML entries are supported.
 
-The code for this library is hosted at http://code.fperrin.net/atom.git.
+The code for this library is hosted at http://code.tar-jx.bz/atom.git;
+this manual can be found at http://tar-jx.bz/code/atom.html. 
 
 * Installation
 
@@ -19,7 +20,7 @@ Put the file =atom.el= somewhere in your =load-path=, and add
 
 The feed is created with =atom-create=, giving it a title and a Web
 address at the minimum. Entries may then be added one by one with
-=atom-add-{text,html,xhtml}-entry=.
+=atom-add-{text, html, xhtml}-entry=.
 
 A typical usage would look like this:
 
@@ -59,13 +60,17 @@ A typical usage would look like this:
     (atom-print my-atom-feed))
 #+END_SRC
 
+See the docstrings for the methods above for more details.
+
 * Additionnal notes
+
+** If what you want to do is not possible here
 
 The =my-atom-feed= object in the example above is really only an XML
 tree as defined by the =xml.el= package. This means you can manipulate
-it, as long as you are careful not to mess up the XML structure. For
+it, as long as you are careful when manipulating the XML structure. For
 instance, if you want to add somebody as a contributor to an entry,
-you could say the following:
+and also add an =lang= attribute, you could say the following:
 
 #+BEGIN_SRC elisp
   (let ((entry (atom-add-html-entry my-atom-feed
@@ -73,9 +78,78 @@ you could say the following:
                                     "http://example.org/witty"
                                     "<p>This is <i>clever</i>, isn't it?")))
     (atom-modify-entry entry 'contributor
-                       (atom-massage-author '("John Clever" "jc@example.net"))))
+                       (atom-massage-author '("John Clever" "jc@example.net")))
+    (let* ((content (assoc 'content entry))
+           (attrs (xml-node-attributes entry)))
+      (setcar (cdr entry) (cons '(lang . "en") attrs))))
 #+END_SRC
+
+** Conformingness of produced feeds
 
 As of now, the library doesn't check whether there are two entries
 with the same =id= value (which is illegal), or with the same
 =updated= value (which reportedly confuse some readers).
+
+The encoding of the resulting feed is hard-coded to UTF-8.
+
+** Outputting RSS feeds
+
+Use =atom-to-rss-print= and =atom-to-rss-write-file=.
+
+Producing RSS from Atom feeds is not optimal. In particular :
+
+- the =updated= and the =pubDate= in the two standards don't seem to
+  have the same semantics (last meaningfull change VS publication of
+  the entry) ;
+
+- the =description= of the channel is mandatory in RSS. The value for
+  this element is taken from the =subtitle= element of an Atom feed,
+  which is optional, so this library may produce non conforming RSS
+  feeds.
+
+** XHTML entries
+
+According to the w3c, relative links in an Atom feed can confuse feed
+readers. As a result, this library's default behaviour is to translate
+all addresses in the =href= attribute of =a= elements and =src= of
+=img= to absolute links. This can be disabled by setting NOCONVERT to
+t when calling =atom-add-xhtml-entry=.
+
+In the =pre= element, whitespace is significant. However,
+=xml-parse-region= then =xml-print= will add spaces and
+identation. This is not something that can be fixed from =atom=.
+
+If you already have ypur XHTML content in Lisp format (as opposed to
+simply a long string), you can pass it directly, as in:
+
+#+BEGIN_SRC elisp
+  (atom-add-xhtml-entry
+    my-atom-feed
+    "An XHTML example"
+    "http://example.org/emacs-haiku"
+    '((h1 nil "Emacs Haiku")
+      (p nil "The friends chat gaily," (br)
+         "I stand up to join their talk." (br)
+         "My save-excursion." (br))
+      (p ((class . "author-name")) nil "Oliver Scholz")))
+#+END_SRC
+
+This will save a call to =xml-parse-region=.
+
+* License
+
+=atom.el= ---An elisp library for creating Atom feeds.
+Copyright (C) 2011 Frédéric Perrin.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+The full text of the GNU General Public License can be found at the
+following address: <http://www.gnu.org/licenses/gpl-3.0.txt>

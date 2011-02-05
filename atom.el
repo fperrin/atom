@@ -27,8 +27,7 @@
 ;; permanent link and the content of the entry. Text-only, HTML and
 ;; XHTML entries are supported.
 
-;; A feed is really a Lisp structure as used by the `xml.el' package,
-;; without the parent `feed' element.
+;; It is possible to produce both Atom and RSS feeds.
 
 ;; A typical usage would look like this:
 
@@ -40,27 +39,17 @@
 ;;    "http://example.org/hello"
 ;;    "Hello the world!")
 ;;
-;;   ; A text-only entry, with all the optional pieces of data
-;;   (atom-add-text-entry
-;;    my-atom-feed
-;;    "Bonjour"
-;;    "http://example.org/bonjour"
-;;    "Bonjour à tout le monde !"
-;;    ;; optional: the last modification time
-;;    (date-to-time "2011-01-30 23:40:12")
-;;    ;; optional: an identifier for this entry; a common way to generate it is
-;;    ;; to use the domain name and the creation date of the entry.
-;;    (atom-generate-id "http://example.org"
-;; 		     (date-to-time "2011-01-30 10:01:05"))
-;;    ;; optional: a summary for this entry
-;;    "Bonjour, monde.")
-;;
 ;;   (atom-add-xhtml-entry
 ;;    my-atom-feed
 ;;    "An XHTML example"
 ;;    "http://example.org/html-example"
 ;;    "<p>One can also use <acronym>XHTML</acronym> in the entries.</p>")
-;;   (atom-print my-atom-feed))
+;;
+;;   (atom-print my-atom-feed)
+;;   ;; If you prefer RSS feeds:
+;;   (atom-to-rss-print my-atom-feed))
+
+;; Full documentation is available at <http://tar-jx.bz/code/atom.html>.
 
 ;;; Code:
 
@@ -214,7 +203,7 @@ Some information may be lost or approximated."
 	  (setcar (cdr guid) (list (cons 'isPermaLink "false"))))
       (if (and descr
 	       (equal (xml-get-attribute descr 'type) "xhtml"))
-	  (setcar (cddr descr) (xml-node-text descr))))
+	  (setcar (cddr descr) (xml-node-as-text descr))))
     `(item nil ,@item)))
 
 (defun atom-to-rss-translator (source target translations)
@@ -224,11 +213,6 @@ Some information may be lost or approximated."
 	   (data (copy-tree (cdr (assoc from source)))))
       (when data
 	(atom-modify-entry target to data)))))
-
-(defun xml-node-text (node)
-  (with-temp-buffer
-    (xml-print (xml-node-children node))
-    (buffer-string)))
 
 (defun atom-to-rss-modify-link (entry)
   (let* ((link (assoc 'link entry))
@@ -306,7 +290,8 @@ Atom feed."
   "Return an XML node representing the author. AUTHOR can be:
 - nil, in which case `user-full-name' and `user-mail-address' are
   used;
-- a single string, the full name of the author;
+- a single string, the full name of the author; no email address
+  will be included;
 - a list with two elements, the full name and the email address
   of the author;
 - something else, assumed to be a complete `atomPersonConstruct'."
@@ -327,6 +312,18 @@ absolute, in the context of BASE, an URL."
   (dolist (child (xml-node-children node))
     (when (listp child) (atom-xhtml-convert-links child base))))
 
+(defun atom-generate-id (link creation-date)
+  "Generate a string suitable for use as an atom:id element. This
+implements Mark Pilgrom's tag: URI method, using the
+CREATION-DATE of the entry, and the domain part of LINK."
+    (format "tag:%s,%s:/%s"
+	    (url-host (url-generic-parse-url link))
+	    (format-time-string "%Y-%m-%d" creation-date)
+	    (format-time-string "%Y%m%d%H%M%S" creation-date)))
+
+
+;;; Functions that should probably not be there
+
 (defun url-canonalize (address base)
   "Make ADRESS an absolute URL, taking it in the BASE context."
   ;; I feel such a function should exist in `url-parse'. Did I miss it?
@@ -339,14 +336,11 @@ absolute, in the context of BASE, an URL."
 			      (file-name-directory (url-filename url-base))))
       (url-recreate-url url-base))))
 
-(defun atom-generate-id (link creation-date)
-  "Generate a string suitable for use as an atom:id element. This
-implements Mark Pilgrom's tag: URI method, using the
-CREATION-DATE of the entry, and the domain part of LINK."
-    (format "tag:%s,%s:/%s"
-	    (url-host (url-generic-parse-url link))
-	    (format-time-string "%Y-%m-%d" creation-date)
-	    (format-time-string "%Y%m%d%H%M%S" creation-date)))
+(defun xml-node-as-text (node)
+  "Return a string representing NODEn, an XML structure."
+  (with-temp-buffer
+    (xml-print (xml-node-children node))
+    (buffer-string)))
 
 (provide 'atom)
 ;;; atom.el ends here
