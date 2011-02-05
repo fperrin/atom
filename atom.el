@@ -152,8 +152,8 @@ for additional details."
 given either as a string, or as an XML tree, of a valid XHTML
 fragment. See `atom-add-entry' for additional details.
 
-If CONVERT, translate all links in CONTENT so that they are no
-longer relative to LINK."
+If NOCONVERT is nil, translate all links in CONTENT so that they
+are no longer relative to LINK."
   (let ((xhtml-content (atom-massage-xhtml content)))
     (unless noconvert
       (atom-xhtml-convert-links (cadr xhtml-content) link))
@@ -163,7 +163,7 @@ longer relative to LINK."
 
 (defun atom-print (atom)
   "Print the Atom feed ATOM in the current buffer."
-  (insert "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
+  (insert atom-xml-declaration)
   (insert "<feed xmlns=\"http://www.w3.org/2005/Atom\">\n")
   (xml-print atom)
   (insert "\n</feed>"))
@@ -223,7 +223,7 @@ Some information may be lost or approximated."
 
 (defun atom-print-as-rss (atom)
   (let ((rss (atom-to-rss atom)))
-    (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    (insert atom-xml-declaration)
     (insert "<rss version=\"2.0\">\n")
     (insert "  <channel>\n")
     (xml-print rss "    ")
@@ -233,7 +233,6 @@ Some information may be lost or approximated."
 (defun atom-to-rss-time (time)
   "Translates a string from the format used by Atom into the
 format used by RSS."
-  ;; Same remark as in `atom-format-time'
   (let ((system-time-locale "C"))
     (format-time-string "%a, %d %b %Y %T %z" (atom-parse-time time))))
 
@@ -253,6 +252,10 @@ format used by RSS."
 (defvar atom-time-format-string "%Y-%m-%dT%T%z"
   "The format for string representation of dates.")
 
+(defvar atom-xhtml-namespace "http://www.w3.org/1999/xhtml")
+
+(defvar atom-xml-declaration "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
+
 (defun atom-format-time (&optional time)
   "Format a time according to RFC3339."
   ;; The time zone must be specified in numeric form, but with a colon between
@@ -263,6 +266,7 @@ format used by RSS."
 
 (defun atom-parse-time (&optional time)
   "Parse a time as specified in RFC3339 into Emacs's native format."
+  ;; Same remark as in `atom-format-time'
   (date-to-time (replace-regexp-in-string ":\\(..\\)$" "\\1" time)))
 
 (defun atom-massage-html (content)
@@ -273,7 +277,7 @@ Atom feed. CONTENT must be a string."
 (defun atom-string-to-xml (string)
   "Convert STRING into a Lisp structure as used by `xml.el'."
   (with-temp-buffer
-    (insert "<div xmlns=\"http://www.w3.org/1999/xhtml\">")
+    (insert "<div xmlns=\"" atom-xhtml-namespace "\">")
     (insert string)
     (insert "</div>")
     ;; `xml-parse-region' doesn't require that the XML parsed be enclosed in a
@@ -287,7 +291,7 @@ Atom feed."
   (list '((type . "xhtml"))
 	(or (and (stringp content)
 		 (atom-string-to-xml content))
-	    `(div ((xmlns . "http://www.w3.org/1999/xhtml\">")) ,@content))))
+	    `(div ((xmlns . ,atom-xhtml-namespace)) ,@content))))
 
 (defun atom-massage-author (author)
   "Return an XML node representing the author. AUTHOR can be:
