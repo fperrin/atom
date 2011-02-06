@@ -172,7 +172,7 @@ are no longer relative to LINK."
   "Writes the feed ATOM to FILENAME."
   (with-temp-buffer
     (atom-print atom)
-    (write-region (point-min) (point-max) filename)))
+    (write-file filename)))
 
 
 (defun atom-to-rss (atom)
@@ -246,7 +246,7 @@ format used by RSS."
   "Saves ATOM as a RSS feed into FILENAME."
   (with-temp-buffer
     (atom-print-as-rss atom)
-    (write-region nil nil filename)))
+    (write-file filename)))
 
 
 (defvar atom-time-format-string "%Y-%m-%dT%T%z"
