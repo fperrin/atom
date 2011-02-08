@@ -276,14 +276,17 @@ Atom feed. CONTENT must be a string."
 
 (defun atom-string-to-xml (string)
   "Convert STRING into a Lisp structure as used by `xml.el'."
-  (with-temp-buffer
-    (insert "<div xmlns=\"" atom-xhtml-namespace "\">")
-    (insert string)
-    (insert "</div>")
-    ;; `xml-parse-region' doesn't require that the XML parsed be enclosed in a
-    ;; root node, and accordingly, returns a list of elements. We are only
-    ;; interested in the first one, the DIV we just inserted.
-    (car (xml-parse-region (point-min) (point-max)))))
+  (require 'xml-xhtml-entities)
+  (let ((xml-entity-alist xml-xhtml-entities)
+	(xml-validating-parser t))
+    (with-temp-buffer
+      (insert "<div xmlns=\"" atom-xhtml-namespace "\">")
+      (insert string)
+      (insert "</div>")
+      ;; `xml-parse-region' returns a list of elements, even though it
+      ;; requires an only root node. We are only interested in the first
+      ;; one, the DIV we just inserted.
+      (car (xml-parse-region (point-min) (point-max))))))
 
 (defun atom-massage-xhtml (content)
   "Massage CONTENT so it can be used as an XHTML fragment in an
