@@ -8,8 +8,8 @@ the feed has been created, entries may be added to the feed, by
 specifying (at the minimum) a title, a permanent link and the content
 of the entry. Text-only, HTML and XHTML entries are supported.
 
-The code for this library is hosted at http://code.tar-jx.bz/atom.git;
-this manual can be found at http://tar-jx.bz/code/atom.html. 
+The code for this library is hosted at [[http://code.tar-jx.bz/atom.git]];
+this manual can be found at [[http://tar-jx.bz/code/atom.html]]. 
 
 * Installation
 
@@ -30,9 +30,9 @@ A typical usage would look like this:
     ;; A simple, text-only entry
     (atom-add-text-entry
      my-atom-feed
-     "Hello world"
-     "http://example.org/hello"
-     "Hello the world!")
+     "Hello world"                        ; Title
+     "http://example.org/hello"           ; Permalink of the entry
+     "Hello the world!")                  ; Content of the entry
   
     ;; A text-only entry, with all the optional pieces of data
     (atom-add-text-entry
@@ -62,7 +62,7 @@ A typical usage would look like this:
 
 See the docstrings for the methods above for more details.
 
-* Additionnal notes
+* Additional notes
 
 ** If what you want to do is not possible here
 
@@ -79,8 +79,7 @@ and also add an =lang= attribute, you could say the following:
                                     "<p>This is <i>clever</i>, isn't it?")))
     (atom-modify-entry entry 'contributor
                        (atom-massage-author '("John Clever" "jc@example.net")))
-    (let* ((content (assoc 'content entry))
-           (attrs (xml-node-attributes entry)))
+    (let* ((attrs (xml-node-attributes entry)))
       (setcar (cdr entry) (cons '(lang . "en") attrs))))
 #+END_SRC
 
@@ -117,9 +116,9 @@ t when calling =atom-add-xhtml-entry=.
 
 In the =pre= element, whitespace is significant. However,
 =xml-parse-region= then =xml-print= will add spaces and
-identation. This is not something that can be fixed from =atom=.
+identation. This is not something that can be fixed from =atom.el=.
 
-If you already have ypur XHTML content in Lisp format (as opposed to
+If you already have your XHTML content in Lisp format (as opposed to
 simply a long string), you can pass it directly, as in:
 
 #+BEGIN_SRC elisp
@@ -138,7 +137,7 @@ This will save a call to =xml-parse-region=.
 
 * License
 
-=atom.el= ---An elisp library for creating Atom feeds.
+=atom.el= -- An elisp library for creating Atom feeds.
 Copyright (C) 2011 Frédéric Perrin.
 
 This program is free software: you can redistribute it and/or modify
