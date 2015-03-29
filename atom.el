@@ -123,7 +123,7 @@ probably not a very good default.
 ID defaults to LINK, which is not optimal; see `atom-generate-id'
 for a way to create good identifiers. For a given entry, it must
 not change between successive generations of the atom feed, even
-when the content of the entry ."
+when the content of the entry changes."
   (let ((entry (list (list 'title nil title))))
     (atom-modify-entry entry 'link  (list (list (cons 'href link))))
     (atom-modify-entry entry 'id (or id link))

@@ -153,9 +153,9 @@
 
     ;; C0 Controls and Basic Latin
     ("quot"	. "\"") ;; quotation mark, U+0022 ISOnum
-    ("amp"	. "&")  ;; ampersand, U+0026 ISOnum
-    ("lt"	. "<")  ;; less-than sign, U+003C ISOnum
-    ("gt"	. ">")  ;; greater-than sign, U+003E ISOnum
+    ("amp"	. "&#x26;")  ;; ampersand, U+0026 ISOnum
+    ("lt"	. "&#x3c;")  ;; less-than sign, U+003C ISOnum
+    ("gt"	. "&#x3e;")  ;; greater-than sign, U+003E ISOnum
     ("apos"	. "'")  ;; apostrophe = APL quote, U+0027 ISOnum
 
     ;; Latin Extended-A
